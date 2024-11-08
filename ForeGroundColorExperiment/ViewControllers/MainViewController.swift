@@ -41,33 +41,36 @@ final class MainViewController: UITableViewController {
         
         self.model.publisher(for: \.items, options: [.initial, .new])
             .sink(receiveValue: { [weak self] items in
-                var snapshot = NSDiffableDataSourceSnapshot<Int, MainItem>()
+                guard let self = self else { return }
+                
+                var snapshot = self.dataSource.snapshot()
                 if snapshot.sectionIdentifiers.isEmpty {
                     snapshot.appendSections([0])
                 }
-                if snapshot.itemIdentifiers.isEmpty {
-                    snapshot.appendItems(items)
-                } else {
-                    let currentItems = snapshot.itemIdentifiers(inSection: 0)
-                    let diff = currentItems.difference(from: items)
-                    
-                    // Iterate over the diff to apply changes
-                    for change in diff {
-                        switch change {
-                        case .insert(offset: let offset, element: let newItem, associatedWith: _):
-                            snapshot.insertItems([newItem], afterItem: currentItems[offset])
-                        case .remove(offset: let offset, element: _, associatedWith: _):
-                            snapshot.deleteItems([currentItems[offset]])
+                
+                let difference = items.difference(from: snapshot.itemIdentifiers)
+                for change in difference {
+                    switch change {
+                    case .insert(let offset, let element, _):
+                        if offset == snapshot.itemIdentifiers.count {
+                            snapshot.appendItems([element], toSection: 0)
+                        } else if offset > 0, offset < snapshot.itemIdentifiers.count {
+                            let beforeItem = snapshot.itemIdentifiers[offset]
+                            snapshot.insertItems([element], beforeItem: beforeItem)
+                        } else {
+                            snapshot.insertItems([element], beforeItem: snapshot.itemIdentifiers.first!)
                         }
+                    case .remove(_, let element, _):
+                        snapshot.deleteItems([element])
                     }
                 }
                 
-                self?.dataSource.apply(snapshot)
+                self.dataSource.apply(snapshot, animatingDifferences: true)
             })
             .store(in: &bag)
-        
     }
-    
+
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         

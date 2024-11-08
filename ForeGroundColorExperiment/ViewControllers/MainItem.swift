@@ -7,13 +7,17 @@
 
 import UIKit
 
-final class MainItem: NSObject {
+final class MainItem: NSObject, Identifiable {
     var name: String?
     
     init(name: String? = nil) {
         self.name = name
         super.init()
     }
+    
+    // MARK: Identifiable
+    
+    let id: UUID = UUID()
 }
 
 
